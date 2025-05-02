@@ -246,7 +246,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `u${Date.now()}`,
       name,
       avatar: avatarUrl,
-      status: 'online',
+      status: 'online', // Use a valid status value
     };
     
     const updatedUsers = [...users, newUser];
@@ -264,9 +264,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error("User not found");
     }
     
-    // Update user status to online
+    // Update user status to online - ensure we're using a valid status value
     const updatedUsers = users.map(u => 
-      u.id === userId ? { ...u, status: 'online' } : u
+      u.id === userId ? { ...u, status: 'online' as const } : u
     );
     
     setUsers(updatedUsers);
