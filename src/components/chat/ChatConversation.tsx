@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '@/context/ChatContext';
 import { Message as MessageType } from '@/types';
@@ -181,6 +180,7 @@ const ChatConversation = () => {
               senderName={
                 activeChat.participants.find(p => p.id === message.senderId)?.name
               }
+              formatMessageTime={formatMessageTime}
             />
           ))}
         </div>
@@ -233,9 +233,10 @@ interface MessageProps {
   isOwnMessage: boolean;
   showAvatar: boolean;
   senderName?: string;
+  formatMessageTime: (timestamp: string) => string; // Added formatMessageTime as a prop
 }
 
-const Message = ({ message, isOwnMessage, showAvatar, senderName }: MessageProps) => {
+const Message = ({ message, isOwnMessage, showAvatar, senderName, formatMessageTime }: MessageProps) => {
   return (
     <div
       className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} message-appear`}
