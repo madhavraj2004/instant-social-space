@@ -13,12 +13,14 @@ const Login = () => {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { loginUser, users } = useChat();
+  const [isLoading, setIsLoading] = useState(false);
+  const { loginUser } = useChat();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (!name.trim()) {
       toast({
@@ -26,6 +28,7 @@ const Login = () => {
         description: "Please enter your username",
         variant: "destructive"
       });
+      setIsLoading(false);
       return;
     }
 
@@ -35,23 +38,27 @@ const Login = () => {
         description: "Please enter your password",
         variant: "destructive"
       });
+      setIsLoading(false);
       return;
     }
 
     try {
       // Find user by name and validate password
-      loginUser(name, password);
+      await loginUser(name, password);
       toast({
         title: "Success",
-        description: "Login successful!"
+        description: "Login successful! Redirecting to your chats..."
       });
-      navigate('/');
+      // Redirect to home page after successful login
+      navigate('/', { replace: true });
     } catch (error) {
       toast({
         title: "Error",
         description: "Invalid username or password",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -105,7 +112,13 @@ const Login = () => {
                 </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full">Sign In</Button>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? "Signing In..." : "Sign In"}
+            </Button>
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">
