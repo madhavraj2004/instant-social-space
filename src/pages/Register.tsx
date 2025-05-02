@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
-import { UserRound } from 'lucide-react';
+import { UserRound, Eye, EyeOff } from 'lucide-react';
 
 const Register = () => {
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
   const { registerUser } = useChat();
   const navigate = useNavigate();
@@ -29,12 +31,21 @@ const Register = () => {
       return;
     }
 
+    if (!password.trim() || password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Please enter a password (minimum 6 characters)",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Use a default avatar if none provided
     const finalAvatarUrl = avatarUrl.trim() || 
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80';
     
     try {
-      registerUser(name, finalAvatarUrl);
+      registerUser(name, finalAvatarUrl, password);
       toast({
         title: "Success",
         description: "Registration successful! You are now logged in."
@@ -47,6 +58,10 @@ const Register = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -64,14 +79,40 @@ const Register = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Username</Label>
               <Input 
                 id="name" 
-                placeholder="Enter your name" 
+                placeholder="Enter your username" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input 
+                  id="password" 
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={6}
+                  required
+                />
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute right-0 top-0"
+                  onClick={toggleShowPassword}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Password must be at least 6 characters
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="avatar">Avatar URL (optional)</Label>

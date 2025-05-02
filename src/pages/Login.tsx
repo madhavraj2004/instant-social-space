@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { UserRound } from 'lucide-react';
+import { UserRound, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { loginUser, users } = useChat();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,29 +23,40 @@ const Login = () => {
     if (!name.trim()) {
       toast({
         title: "Error",
-        description: "Please enter your name",
+        description: "Please enter your username",
         variant: "destructive"
       });
       return;
     }
 
-    // Find user by name
-    const foundUser = users.find(user => user.name.toLowerCase() === name.toLowerCase());
-    
-    if (foundUser) {
-      loginUser(foundUser.id);
+    if (!password.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your password",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Find user by name and validate password
+      loginUser(name, password);
       toast({
         title: "Success",
         description: "Login successful!"
       });
       navigate('/');
-    } else {
+    } catch (error) {
       toast({
         title: "Error",
-        description: "User not found. Please check your name or register.",
+        description: "Invalid username or password",
         variant: "destructive"
       });
     }
+  };
+
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -55,20 +68,42 @@ const Login = () => {
           </div>
           <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
           <CardDescription className="text-center">
-            Enter your name to sign in to your account
+            Enter your credentials to sign in to your account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Username</Label>
               <Input 
                 id="name" 
-                placeholder="Enter your name" 
+                placeholder="Enter your username" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input 
+                  id="password" 
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute right-0 top-0"
+                  onClick={toggleShowPassword}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <Button type="submit" className="w-full">Sign In</Button>
           </form>

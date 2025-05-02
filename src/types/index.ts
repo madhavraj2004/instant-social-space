@@ -5,6 +5,7 @@ export type User = {
   avatar: string;
   status: 'online' | 'offline' | 'away' | 'busy';
   lastActive?: string;
+  password?: string; // Add password field (optional for backwards compatibility)
 };
 
 export type Message = {

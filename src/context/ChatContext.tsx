@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User, Message, Chat } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -10,12 +9,14 @@ const sampleUsers: User[] = [
     name: 'John Doe',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
     status: 'online',
+    password: 'password123', // Added password for sample user
   },
   {
     id: 'u2',
     name: 'Jane Smith',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
     status: 'online',
+    password: 'password123', // Added password for sample user
   },
   {
     id: 'u3',
@@ -163,8 +164,8 @@ interface ChatContextType {
   sendMessage: (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video') => void;
   createChat: (participants: User[], name?: string) => void;
   readMessages: (chatId: string) => void;
-  registerUser: (name: string, avatarUrl: string) => void;
-  loginUser: (userId: string) => void;
+  registerUser: (name: string, avatarUrl: string, password: string) => void;
+  loginUser: (username: string, password: string) => void;
   isAuthenticated: boolean;
 }
 
@@ -236,7 +237,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [chats, activeChat]);
 
-  const registerUser = (name: string, avatarUrl: string) => {
+  const registerUser = (name: string, avatarUrl: string, password: string) => {
     // Check if user with this name already exists
     if (users.some(user => user.name.toLowerCase() === name.toLowerCase())) {
       throw new Error("A user with this name already exists");
@@ -246,7 +247,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `u${Date.now()}`,
       name,
       avatar: avatarUrl,
-      status: 'online', // Use a valid status value
+      status: 'online' as const,
+      password, // Store password
     };
     
     const updatedUsers = [...users, newUser];
@@ -258,20 +260,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newUser;
   };
 
-  const loginUser = (userId: string) => {
-    const user = users.find(u => u.id === userId);
+  const loginUser = (username: string, password: string) => {
+    const user = users.find(u => 
+      u.name.toLowerCase() === username.toLowerCase() && 
+      u.password === password
+    );
+    
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Invalid username or password");
     }
     
     // Update user status to online - ensure we're using a valid status value
     const updatedUsers = users.map(u => 
-      u.id === userId ? { ...u, status: 'online' as const } : u
+      u.id === user.id ? { ...u, status: 'online' as const } : u
     );
     
     setUsers(updatedUsers);
     setCurrentUser(user);
-    localStorage.setItem('currentUserId', userId);
+    localStorage.setItem('currentUserId', user.id);
     setIsAuthenticated(true);
   };
 
