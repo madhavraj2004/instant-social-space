@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User, Message, Chat } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/config/firebase';
 
 // Sample users data
 const sampleUsers: User[] = [
@@ -156,7 +158,7 @@ const sampleChats: Chat[] = [
 
 // Define the context type
 interface ChatContextType {
-  currentUser: User;
+  currentUser: User | null;
   users: User[];
   chats: Chat[];
   activeChat: Chat | null;
@@ -164,13 +166,12 @@ interface ChatContextType {
   sendMessage: (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video') => void;
   createChat: (participants: User[], name?: string) => void;
   readMessages: (chatId: string) => void;
-  registerUser: (name: string, avatarUrl: string, password: string) => void;
-  loginUser: (username: string, password: string) => void;
   isAuthenticated: boolean;
+  setIsAuthenticated: (value: boolean) => void;
 }
 
 const defaultContextValue: ChatContextType = {
-  currentUser: sampleUsers[0],
+  currentUser: null,
   users: sampleUsers.slice(1),
   chats: [],
   activeChat: null,
@@ -178,115 +179,66 @@ const defaultContextValue: ChatContextType = {
   sendMessage: () => {},
   createChat: () => {},
   readMessages: () => {},
-  registerUser: () => {},
-  loginUser: () => {},
   isAuthenticated: false,
+  setIsAuthenticated: () => {},
 };
 
 export const ChatContext = createContext<ChatContextType>(defaultContextValue);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User>(sampleUsers[0]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(sampleUsers);
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const { toast } = useToast();
 
-  // Load data from localStorage on component mount
+  // Listen to Firebase auth state changes
   useEffect(() => {
-    const storedUsers = localStorage.getItem('users');
-    const storedChats = localStorage.getItem('chats');
-    const storedCurrentUserId = localStorage.getItem('currentUserId');
-    
-    if (storedUsers) {
-      setUsers(JSON.parse(storedUsers));
-    } else {
-      localStorage.setItem('users', JSON.stringify(sampleUsers));
-    }
-    
-    if (storedChats) {
-      setChats(JSON.parse(storedChats));
-    }
-    
-    if (storedCurrentUserId) {
-      const storedUser = JSON.parse(storedUsers || '[]').find((u: User) => u.id === storedCurrentUserId);
-      if (storedUser) {
-        setCurrentUser(storedUser);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in
+        const user: User = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || 'User',
+          avatar: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
+          status: 'online' as const,
+        };
+        
+        setCurrentUser(user);
         setIsAuthenticated(true);
+        
+        // Load user's chats
+        loadUserChats(user.id);
+      } else {
+        // User is signed out
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        setChats([]);
       }
-    }
+    });
+    
+    // Cleanup subscription
+    return () => unsubscribe();
   }, []);
 
-  // Save users and chats to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('chats', JSON.stringify(chats));
-  }, [chats]);
-
-  // Update active chat when chats change
-  useEffect(() => {
-    if (activeChat) {
-      const updatedActiveChat = chats.find(chat => chat.id === activeChat.id);
-      if (updatedActiveChat) {
-        setActiveChat(updatedActiveChat);
-      }
-    }
-  }, [chats, activeChat]);
-
-  const registerUser = (name: string, avatarUrl: string, password: string) => {
-    // Check if user with this name already exists
-    if (users.some(user => user.name.toLowerCase() === name.toLowerCase())) {
-      throw new Error("A user with this name already exists");
-    }
-    
-    const newUser: User = {
-      id: `u${Date.now()}`,
-      name,
-      avatar: avatarUrl,
-      status: 'online' as const,
-      password, // Store password
-    };
-    
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers);
-    setCurrentUser(newUser);
-    localStorage.setItem('currentUserId', newUser.id);
-    setIsAuthenticated(true);
-    
-    return newUser;
+  // Load user's chats - in a real app, this would fetch from Firebase
+  const loadUserChats = (userId: string) => {
+    // For now, we'll use sample chats but filter them
+    // In a real app, you'd fetch this from Firebase
+    const userChats = sampleChats.filter(chat => 
+      chat.participants.some(p => p.id === userId)
+    );
+    setChats(userChats);
   };
 
-  const loginUser = (username: string, password: string) => {
-    const user = users.find(u => 
-      u.name.toLowerCase() === username.toLowerCase() && 
-      u.password === password
-    );
-    
-    if (!user) {
-      throw new Error("Invalid username or password");
-    }
-    
-    // Update user status to online - ensure we're using a valid status value
-    const updatedUsers = users.map(u => 
-      u.id === user.id ? { ...u, status: 'online' as const } : u
-    );
-    
-    setUsers(updatedUsers);
-    setCurrentUser(user);
-    localStorage.setItem('currentUserId', user.id);
-    setIsAuthenticated(true);
-  };
-
+  // The rest of the functions remain similar but adapted for Firebase
   const sendMessage = (
     content: string, 
     fileUrl?: string, 
     fileType?: 'image' | 'document' | 'video'
   ) => {
-    if (!activeChat) return;
+    if (!activeChat || !currentUser) return;
     
     const newMessage: Message = {
       id: `m${Date.now()}`,
@@ -313,6 +265,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const createChat = (participants: User[], name?: string) => {
+    if (!currentUser) return;
+    
     // Check if direct chat already exists
     if (participants.length === 1) {
       const existingChat = chats.find(
@@ -375,9 +329,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sendMessage,
     createChat,
     readMessages,
-    registerUser,
-    loginUser,
     isAuthenticated,
+    setIsAuthenticated,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

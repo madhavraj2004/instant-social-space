@@ -21,7 +21,12 @@ const ChatApp = () => {
         description: `You have ${chats.length} conversations`
       });
     }
-  }, [isAuthenticated, navigate, currentUser, chats.length, toast]);
+  }, [isAuthenticated, navigate, currentUser, chats, toast]);
+
+  // Add console logs for debugging
+  console.log("Authentication state:", isAuthenticated);
+  console.log("Current user:", currentUser);
+  console.log("Current route:", window.location.pathname);
 
   if (!isAuthenticated) return null;
 

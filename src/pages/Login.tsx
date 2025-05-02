@@ -8,13 +8,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { UserRound, Eye, EyeOff } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/config/firebase';
 
 const Login = () => {
-  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { loginUser } = useChat();
+  const { setIsAuthenticated } = useChat();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -22,10 +24,10 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     
-    if (!name.trim()) {
+    if (!email.trim()) {
       toast({
         title: "Error",
-        description: "Please enter your username",
+        description: "Please enter your email",
         variant: "destructive"
       });
       setIsLoading(false);
@@ -43,18 +45,26 @@ const Login = () => {
     }
 
     try {
-      // Find user by name and validate password
-      await loginUser(name, password);
+      // Sign in with Firebase Authentication
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Set authentication state in our context
+      setIsAuthenticated(true);
+      
+      // Show success message
       toast({
         title: "Success",
         description: "Login successful! Redirecting to your chats..."
       });
-      // Redirect to home page after successful login
-      navigate('/', { replace: true });
-    } catch (error) {
+      
+      // Force redirect to home page
+      window.location.href = '/';
+    } catch (error: any) {
+      console.error("Firebase auth error:", error);
       toast({
         title: "Error",
-        description: "Invalid username or password",
+        description: error.message || "Invalid email or password",
         variant: "destructive"
       });
     } finally {
@@ -81,12 +91,13 @@ const Login = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input 
-                id="name" 
-                placeholder="Enter your username" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                id="email" 
+                type="email"
+                placeholder="Enter your email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>

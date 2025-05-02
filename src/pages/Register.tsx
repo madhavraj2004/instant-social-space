@@ -9,18 +9,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { UserRound, Eye, EyeOff } from 'lucide-react';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth } from '@/config/firebase';
 
 const Register = () => {
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
-  const { registerUser } = useChat();
+  const [isLoading, setIsLoading] = useState(false);
+  const { setIsAuthenticated } = useChat();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (!name.trim()) {
       toast({
@@ -28,6 +33,17 @@ const Register = () => {
         description: "Please enter your name",
         variant: "destructive"
       });
+      setIsLoading(false);
+      return;
+    }
+
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your email",
+        variant: "destructive"
+      });
+      setIsLoading(false);
       return;
     }
 
@@ -37,6 +53,7 @@ const Register = () => {
         description: "Please enter a password (minimum 6 characters)",
         variant: "destructive"
       });
+      setIsLoading(false);
       return;
     }
 
@@ -45,18 +62,34 @@ const Register = () => {
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80';
     
     try {
-      registerUser(name, finalAvatarUrl, password);
+      // Create user with Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Update profile with display name and photo URL
+      await updateProfile(userCredential.user, {
+        displayName: name,
+        photoURL: finalAvatarUrl
+      });
+      
+      // Set authentication state in context
+      setIsAuthenticated(true);
+      
       toast({
         title: "Success",
         description: "Registration successful! You are now logged in."
       });
-      navigate('/');
-    } catch (error) {
+      
+      // Force redirect to chat home page
+      window.location.href = '/';
+    } catch (error: any) {
+      console.error("Firebase auth error:", error);
       toast({
         title: "Error",
-        description: "Failed to register. Please try again.",
+        description: error.message || "Failed to register. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,12 +112,23 @@ const Register = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Username</Label>
+              <Label htmlFor="name">Display Name</Label>
               <Input 
                 id="name" 
-                placeholder="Enter your username" 
+                placeholder="Enter your name" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email"
+                placeholder="Enter your email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -126,7 +170,13 @@ const Register = () => {
                 Leave blank to use a default avatar
               </p>
             </div>
-            <Button type="submit" className="w-full">Register</Button>
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? "Creating Account..." : "Register"}
+            </Button>
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">
