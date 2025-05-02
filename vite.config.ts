@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
     componentTagger(),
   ].filter(Boolean),
   resolve: {
+    extensions: ['.tsx', '.ts', '.jsx', '.js'],
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },

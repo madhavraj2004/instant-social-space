@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useChat } from '@/context/ChatContext';
 import { User, Chat } from '@/types';
@@ -6,28 +5,26 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { defineConfig, ConfigEnv, UserConfig } from "vite";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { 
-  Users, MessageCircle, Search, PlusCircle, User as UserIcon
-} from 'lucide-react';
+import { Users, MessageCircle, Search, PlusCircle } from 'lucide-react';
 import UserItem from './UserItem';
 
 const ChatSidebar = () => {
   const { chats, users, activeChat, setActiveChat, createChat, readMessages } = useChat();
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'chats' | 'users'>('chats');
+  const [activeTab, setActiveTab] = useState<'chats' | 'users' | 'add-people'>('chats');
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
-  
+  const [inviteEmail, setInviteEmail] = useState('');
+
   // Filter chats based on search term
   const filteredChats = chats.filter(chat => {
     if (chat.type === 'direct') {
-      // For direct chats, search by participant name
-      return chat.participants.some(user => 
+      return chat.participants.some(user =>
         user.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     } else {
-      // For group chats, search by group name
       return chat.name?.toLowerCase().includes(searchTerm.toLowerCase());
     }
   });
@@ -61,6 +58,33 @@ const ChatSidebar = () => {
       setSelectedUsers(selectedUsers.filter(u => u.id !== user.id));
     } else {
       setSelectedUsers([...selectedUsers, user]);
+    }
+  };
+
+  const handleInvite = async () => {
+    try {
+      // API call to send an invitation
+      const response = await fetch('/api/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: inviteEmail }), // Send inviteEmail to the server
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send invitation');
+      }
+
+      const data = await response.json();
+      console.log('Invitation sent:', data);
+
+      // Reset the input field and provide feedback
+      setInviteEmail('');
+      alert('Invitation sent successfully!');
+    } catch (error) {
+      console.error('Failed to send invitation:', error);
+      alert('Failed to send invitation.');
     }
   };
 
@@ -106,7 +130,7 @@ const ChatSidebar = () => {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium">Select Users</h3>
                 <ScrollArea className="h-72">
-                  {users.map((user) => (
+                  {users.map(user => (
                     <div
                       key={user.id}
                       className={`flex items-center p-2 rounded-md cursor-pointer ${
@@ -124,8 +148,8 @@ const ChatSidebar = () => {
                   ))}
                 </ScrollArea>
               </div>
-              <Button 
-                className="w-full bg-chat-primary hover:bg-chat-accent" 
+              <Button
+                className="w-full bg-chat-primary hover:bg-chat-accent"
                 onClick={handleCreateGroupChat}
                 disabled={selectedUsers.length === 0 || !newGroupName}
               >
@@ -139,9 +163,9 @@ const ChatSidebar = () => {
       <div className="p-3 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search" 
-            className="pl-9" 
+          <Input
+            placeholder="Search"
+            className="pl-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -167,13 +191,22 @@ const ChatSidebar = () => {
           <Users className="h-4 w-4" />
           <span>Users</span>
         </button>
+        <button
+          className={`flex-1 py-2 flex justify-center items-center space-x-2 ${
+            activeTab === 'add-people' ? 'text-chat-primary border-b-2 border-chat-primary' : 'text-gray-500'
+          }`}
+          onClick={() => setActiveTab('add-people')}
+        >
+          <PlusCircle className="h-4 w-4" />
+          <span>Add People</span>
+        </button>
       </div>
 
       <ScrollArea className="flex-1">
         {activeTab === 'chats' ? (
           <div className="p-2 space-y-1">
             {filteredChats.length > 0 ? (
-              filteredChats.map((chat) => (
+              filteredChats.map(chat => (
                 <div
                   key={chat.id}
                   className={`p-2 rounded-md flex items-center space-x-3 cursor-pointer hover:bg-gray-100 ${
@@ -218,10 +251,10 @@ const ChatSidebar = () => {
               <div className="text-center p-4 text-gray-500">No chats found</div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'users' ? (
           <div className="p-2 space-y-1">
             {filteredUsers.length > 0 ? (
-              filteredUsers.map((user) => (
+              filteredUsers.map(user => (
                 <UserItem
                   key={user.id}
                   user={user}
@@ -231,6 +264,23 @@ const ChatSidebar = () => {
             ) : (
               <div className="text-center p-4 text-gray-500">No users found</div>
             )}
+          </div>
+        ) : (
+          <div className="p-4">
+            <h2 className="text-xl font-semibold mb-4">Invite People</h2>
+            <Input
+              type="email"
+              placeholder="Enter email address"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+            />
+            <Button
+              onClick={handleInvite}
+              className="mt-2 bg-chat-primary hover:bg-chat-accent"
+              disabled={!inviteEmail}
+            >
+              Send Invite
+            </Button>
           </div>
         )}
       </ScrollArea>

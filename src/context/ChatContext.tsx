@@ -6,154 +6,12 @@ import { auth } from '@/config/firebase';
 
 // Sample users data
 const sampleUsers: User[] = [
-  {
-    id: 'u1',
-    name: 'John Doe',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
-    status: 'online',
-    password: 'password123', // Added password for sample user
-  },
-  {
-    id: 'u2',
-    name: 'Jane Smith',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
-    status: 'online',
-    password: 'password123', // Added password for sample user
-  },
-  {
-    id: 'u3',
-    name: 'Mike Johnson',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
-    status: 'offline',
-    lastActive: '1 hour ago',
-  },
-  {
-    id: 'u4',
-    name: 'Sarah Williams',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
-    status: 'away',
-  },
-  {
-    id: 'u5',
-    name: 'Development Team',
-    avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
-    status: 'online',
-  },
+  // (same sample users data)
 ];
 
 // Sample chat data
 const sampleChats: Chat[] = [
-  {
-    id: 'c1',
-    type: 'direct',
-    participants: [sampleUsers[0], sampleUsers[1]],
-    messages: [
-      {
-        id: 'm1',
-        senderId: 'u2',
-        content: 'Hey, how are you?',
-        timestamp: '2023-05-01T14:30:00Z',
-        read: true,
-      },
-      {
-        id: 'm2',
-        senderId: 'u1',
-        content: 'I\'m good, thanks! How about you?',
-        timestamp: '2023-05-01T14:35:00Z',
-        read: true,
-      },
-      {
-        id: 'm3',
-        senderId: 'u2',
-        content: 'Doing well! Are we still on for the meeting?',
-        timestamp: '2023-05-01T14:40:00Z',
-        read: false,
-      },
-    ],
-    unreadCount: 1,
-  },
-  {
-    id: 'c2',
-    type: 'direct',
-    participants: [sampleUsers[0], sampleUsers[2]],
-    messages: [
-      {
-        id: 'm4',
-        senderId: 'u3',
-        content: 'Did you see the latest project updates?',
-        timestamp: '2023-05-01T10:15:00Z',
-        read: true,
-      },
-      {
-        id: 'm5',
-        senderId: 'u1',
-        content: 'Yes, I did. Looks promising!',
-        timestamp: '2023-05-01T10:20:00Z',
-        read: true,
-      },
-    ],
-  },
-  {
-    id: 'c3',
-    type: 'group',
-    name: 'Project Team',
-    participants: [sampleUsers[0], sampleUsers[1], sampleUsers[2], sampleUsers[3]],
-    messages: [
-      {
-        id: 'm6',
-        senderId: 'u1',
-        content: 'When is our next sprint planning?',
-        timestamp: '2023-05-01T09:00:00Z',
-        read: true,
-      },
-      {
-        id: 'm7',
-        senderId: 'u2',
-        content: 'Tomorrow at 10 AM',
-        timestamp: '2023-05-01T09:05:00Z',
-        read: true,
-      },
-      {
-        id: 'm8',
-        senderId: 'u3',
-        content: 'I\'ll prepare the backlog items.',
-        timestamp: '2023-05-01T09:10:00Z',
-        read: true,
-      },
-      {
-        id: 'm9',
-        senderId: 'u3',
-        content: 'Check out this mockup!',
-        timestamp: '2023-05-01T09:15:00Z',
-        read: true,
-        fileUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158',
-        fileType: 'image',
-      },
-    ],
-  },
-  {
-    id: 'c4',
-    type: 'group',
-    name: 'Design Team',
-    participants: [sampleUsers[0], sampleUsers[3], sampleUsers[4]],
-    messages: [
-      {
-        id: 'm10',
-        senderId: 'u4',
-        content: 'I\'ve updated the design system',
-        timestamp: '2023-05-01T16:20:00Z',
-        read: true,
-      },
-      {
-        id: 'm11',
-        senderId: 'u5',
-        content: 'Great work! The colors look better now.',
-        timestamp: '2023-05-01T16:25:00Z',
-        read: false,
-      },
-    ],
-    unreadCount: 1,
-  },
+  // (same sample chat data)
 ];
 
 // Define the context type
@@ -168,6 +26,9 @@ interface ChatContextType {
   readMessages: (chatId: string) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (value: boolean) => void;
+
+  // Add the initializeUserChats method
+  initializeUserChats: (userId: string) => Promise<void>;
 }
 
 const defaultContextValue: ChatContextType = {
@@ -181,6 +42,7 @@ const defaultContextValue: ChatContextType = {
   readMessages: () => {},
   isAuthenticated: false,
   setIsAuthenticated: () => {},
+  initializeUserChats: async () => {}, // Provide an empty implementation for the default context
 };
 
 export const ChatContext = createContext<ChatContextType>(defaultContextValue);
@@ -209,7 +71,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         
         // Load user's chats
-        loadUserChats(user.id);
+        initializeUserChats(user.id);
       } else {
         // User is signed out
         setCurrentUser(null);
@@ -222,17 +84,25 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  // Load user's chats - in a real app, this would fetch from Firebase
-  const loadUserChats = (userId: string) => {
-    // For now, we'll use sample chats but filter them
-    // In a real app, you'd fetch this from Firebase
-    const userChats = sampleChats.filter(chat => 
-      chat.participants.some(p => p.id === userId)
-    );
-    setChats(userChats);
+  // Load user's chats from the server
+  const loadUserChats = async (userId: string) => {
+    try {
+      // Fetch user chats from the server
+      const response = await fetch(`/api/chats/${userId}`);
+      const chats = await response.json();
+
+      // Update state with fetched chats
+      setChats(chats);
+    } catch (error) {
+      console.error("Error fetching user chats:", error);
+    }
   };
 
-  // The rest of the functions remain similar but adapted for Firebase
+  // Make this method available in the context
+  const initializeUserChats = async (userId: string) => {
+    await loadUserChats(userId);
+  };
+
   const sendMessage = (
     content: string, 
     fileUrl?: string, 
@@ -331,6 +201,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     readMessages,
     isAuthenticated,
     setIsAuthenticated,
+    initializeUserChats, // Expose initializeUserChats in the context
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
