@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/context/ChatContext';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -7,13 +8,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserRound, LogOut } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const UserProfile = () => {
   const { currentUser } = useChat();
   const [status, setStatus] = useState(currentUser.status);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleStatusChange = (value: string) => {
     setStatus(value as 'online' | 'offline' | 'away' | 'busy');
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem('currentUserId');
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully"
+    });
+    navigate('/login');
   };
 
   return (
@@ -56,7 +69,7 @@ const UserProfile = () => {
               <UserRound className="mr-2 h-4 w-4" />
               Edit Profile
             </Button>
-            <Button variant="outline" className="flex-1">
+            <Button variant="outline" className="flex-1" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </Button>

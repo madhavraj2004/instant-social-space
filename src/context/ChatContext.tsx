@@ -163,37 +163,65 @@ interface ChatContextType {
   sendMessage: (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video') => void;
   createChat: (participants: User[], name?: string) => void;
   readMessages: (chatId: string) => void;
+  registerUser: (name: string, avatarUrl: string) => void;
+  loginUser: (userId: string) => void;
+  isAuthenticated: boolean;
 }
 
 const defaultContextValue: ChatContextType = {
   currentUser: sampleUsers[0],
   users: sampleUsers.slice(1),
-  chats: sampleChats,
+  chats: [],
   activeChat: null,
   setActiveChat: () => {},
   sendMessage: () => {},
   createChat: () => {},
   readMessages: () => {},
+  registerUser: () => {},
+  loginUser: () => {},
+  isAuthenticated: false,
 };
 
 export const ChatContext = createContext<ChatContextType>(defaultContextValue);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User>(sampleUsers[0]);
-  const [users, setUsers] = useState<User[]>(sampleUsers.slice(1));
-  const [chats, setChats] = useState<Chat[]>(sampleChats);
+  const [users, setUsers] = useState<User[]>(sampleUsers);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Load data from localStorage on component mount
   useEffect(() => {
+    const storedUsers = localStorage.getItem('users');
     const storedChats = localStorage.getItem('chats');
+    const storedCurrentUserId = localStorage.getItem('currentUserId');
+    
+    if (storedUsers) {
+      setUsers(JSON.parse(storedUsers));
+    } else {
+      localStorage.setItem('users', JSON.stringify(sampleUsers));
+    }
+    
     if (storedChats) {
       setChats(JSON.parse(storedChats));
     }
+    
+    if (storedCurrentUserId) {
+      const storedUser = JSON.parse(storedUsers || '[]').find((u: User) => u.id === storedCurrentUserId);
+      if (storedUser) {
+        setCurrentUser(storedUser);
+        setIsAuthenticated(true);
+      }
+    }
   }, []);
 
-  // Save chats to localStorage whenever they change
+  // Save users and chats to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('users', JSON.stringify(users));
+  }, [users]);
+
   useEffect(() => {
     localStorage.setItem('chats', JSON.stringify(chats));
   }, [chats]);
@@ -207,6 +235,45 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, [chats, activeChat]);
+
+  const registerUser = (name: string, avatarUrl: string) => {
+    // Check if user with this name already exists
+    if (users.some(user => user.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error("A user with this name already exists");
+    }
+    
+    const newUser: User = {
+      id: `u${Date.now()}`,
+      name,
+      avatar: avatarUrl,
+      status: 'online',
+    };
+    
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    setCurrentUser(newUser);
+    localStorage.setItem('currentUserId', newUser.id);
+    setIsAuthenticated(true);
+    
+    return newUser;
+  };
+
+  const loginUser = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // Update user status to online
+    const updatedUsers = users.map(u => 
+      u.id === userId ? { ...u, status: 'online' } : u
+    );
+    
+    setUsers(updatedUsers);
+    setCurrentUser(user);
+    localStorage.setItem('currentUserId', userId);
+    setIsAuthenticated(true);
+  };
 
   const sendMessage = (
     content: string, 
@@ -302,6 +369,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sendMessage,
     createChat,
     readMessages,
+    registerUser,
+    loginUser,
+    isAuthenticated,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
