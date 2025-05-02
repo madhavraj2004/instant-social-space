@@ -2,7 +2,6 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/03ccc88a-2be2-48da-97bd-8b365deef84e
 
 (https://lovable.dev/projects/03ccc88a-2be2-48da-97bd-8b365deef84e) and start prompting.
 
