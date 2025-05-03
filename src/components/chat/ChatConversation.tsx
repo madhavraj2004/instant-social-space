@@ -13,6 +13,7 @@ import {
   DrawerContent,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import ChatSidebar from './ChatSidebar';
 
 const ChatConversation = () => {
   const { activeChat, currentUser, sendMessage } = useChat();
