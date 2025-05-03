@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import ChatSidebar from './ChatSidebar';
 import ChatConversation from './ChatConversation';
 import UserProfile from './UserProfile';
@@ -12,16 +13,37 @@ const ChatLayout = () => {
   const { isAuthenticated, currentUser, chats } = useChat();
   const [showSidebar, setShowSidebar] = useState(false);
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
   
   // Add extra logging for debugging
   useEffect(() => {
     console.log("ChatLayout mounted, auth status:", isAuthenticated);
     console.log("Current user in ChatLayout:", currentUser);
+    
+    // After a short delay, set loading to false
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, [isAuthenticated, currentUser]);
 
-  if (!isAuthenticated) {
-    console.log("Not authenticated in ChatLayout, should not render");
-    return null;
+  // Loading state
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="h-8 w-8 border-4 border-t-primary border-r-primary border-b-primary/30 border-l-primary/30 rounded-full animate-spin mx-auto"></div>
+          <p>Loading chat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated state - redirect to login
+  if (!isAuthenticated || !currentUser) {
+    console.log("Not authenticated in ChatLayout, redirecting to login");
+    return <Navigate to="/login" replace />;
   }
 
   console.log("Rendering ChatLayout for authenticated user");
