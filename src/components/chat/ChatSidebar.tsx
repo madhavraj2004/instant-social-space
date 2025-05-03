@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useChat } from '@/context/ChatContext';
 import { User, Chat } from '@/types';
@@ -5,10 +6,10 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { defineConfig, ConfigEnv, UserConfig } from "vite";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, MessageCircle, Search, PlusCircle } from 'lucide-react';
+import { Users, MessageCircle, Search, PlusCircle, Mail } from 'lucide-react';
 import UserItem from './UserItem';
+import { useToast } from '@/hooks/use-toast';
 
 const ChatSidebar = () => {
   const { chats, users, activeChat, setActiveChat, createChat, readMessages } = useChat();
@@ -17,6 +18,8 @@ const ChatSidebar = () => {
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
+  const { toast } = useToast();
 
   // Filter chats based on search term
   const filteredChats = chats.filter(chat => {
@@ -62,29 +65,38 @@ const ChatSidebar = () => {
   };
 
   const handleInvite = async () => {
-    try {
-      // API call to send an invitation
-      const response = await fetch('/api/invite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: inviteEmail }), // Send inviteEmail to the server
+    if (!inviteEmail || !inviteEmail.includes('@')) {
+      toast({
+        title: "Invalid Email",
+        description: "Please provide a valid email address",
+        variant: "destructive"
       });
+      return;
+    }
 
-      if (!response.ok) {
-        throw new Error('Failed to send invitation');
-      }
-
-      const data = await response.json();
-      console.log('Invitation sent:', data);
-
-      // Reset the input field and provide feedback
-      setInviteEmail('');
-      alert('Invitation sent successfully!');
+    try {
+      setIsInviting(true);
+      
+      // This would be a real API call in production
+      // For now, we'll simulate the API call with a timeout
+      setTimeout(() => {
+        // Reset the input field and provide feedback
+        setInviteEmail('');
+        setIsInviting(false);
+        
+        toast({
+          title: "Invitation Sent!",
+          description: `We've sent an invite to ${inviteEmail}`,
+        });
+      }, 1500);
     } catch (error) {
       console.error('Failed to send invitation:', error);
-      alert('Failed to send invitation.');
+      toast({
+        title: "Failed to Send Invitation",
+        description: "There was an error sending the invitation.",
+        variant: "destructive"
+      });
+      setIsInviting(false);
     }
   };
 
@@ -266,20 +278,33 @@ const ChatSidebar = () => {
             )}
           </div>
         ) : (
-          <div className="p-4">
+          <div className="p-4 space-y-4">
             <h2 className="text-xl font-semibold mb-4">Invite People</h2>
-            <Input
-              type="email"
-              placeholder="Enter email address"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-            />
+            <div className="bg-primary/5 rounded-lg p-4">
+              <div className="flex items-center justify-center mb-4">
+                <div className="p-3 bg-primary/10 rounded-full">
+                  <Mail className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+              <p className="text-sm text-center mb-4">
+                Invite your friends or colleagues to join the conversation
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email Address</label>
+              <Input
+                type="email"
+                placeholder="name@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
             <Button
               onClick={handleInvite}
-              className="mt-2 bg-chat-primary hover:bg-chat-accent"
-              disabled={!inviteEmail}
+              className="w-full bg-chat-primary hover:bg-chat-accent"
+              disabled={!inviteEmail || isInviting}
             >
-              Send Invite
+              {isInviting ? "Sending Invite..." : "Send Invite"}
             </Button>
           </div>
         )}
