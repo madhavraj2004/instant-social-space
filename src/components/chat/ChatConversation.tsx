@@ -7,6 +7,12 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Paperclip, Send, Image } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 
 const ChatConversation = () => {
   const { activeChat, currentUser, sendMessage } = useChat();
@@ -15,6 +21,7 @@ const ChatConversation = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Scroll to bottom whenever messages change
   useEffect(() => {
@@ -23,6 +30,17 @@ const ChatConversation = () => {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
   }, [activeChat?.messages]);
+
+  const handleShowSidebar = () => {
+    // For mobile, we'll use a drawer
+    if (window.innerWidth < 768) {
+      // Drawer will be triggered by the button click
+      return;
+    } else {
+      // For desktop, we'll navigate to the chat route
+      navigate('/chat');
+    }
+  };
 
   if (!activeChat) {
     return (
@@ -35,26 +53,62 @@ const ChatConversation = () => {
             Select a chat or start a new conversation to begin messaging
           </p>
           <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
-              <MessageCircleIcon className="h-8 w-8 text-chat-primary mb-2" />
-              <h3 className="font-medium">Direct Messages</h3>
-              <p className="text-sm text-gray-500">Connect one-on-one with your contacts</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
-              <UsersIcon className="h-8 w-8 text-chat-primary mb-2" />
-              <h3 className="font-medium">Group Chats</h3>
-              <p className="text-sm text-gray-500">Collaborate with multiple people at once</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
-              <FileIcon className="h-8 w-8 text-chat-primary mb-2" />
-              <h3 className="font-medium">File Sharing</h3>
-              <p className="text-sm text-gray-500">Share images and documents easily</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
-              <UserRoundIcon className="h-8 w-8 text-chat-primary mb-2" />
-              <h3 className="font-medium">User Profiles</h3>
-              <p className="text-sm text-gray-500">View status and information</p>
-            </div>
+            <Drawer>
+              <DrawerTrigger asChild>
+                <div className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:border-chat-primary">
+                  <MessageCircleIcon className="h-8 w-8 text-chat-primary mb-2" />
+                  <h3 className="font-medium">Direct Messages</h3>
+                  <p className="text-sm text-gray-500">Connect one-on-one with your contacts</p>
+                </div>
+              </DrawerTrigger>
+              <DrawerContent>
+                <div className="p-4 h-[80vh] overflow-auto">
+                  <ChatSidebar />
+                </div>
+              </DrawerContent>
+            </Drawer>
+            <Drawer>
+              <DrawerTrigger asChild>
+                <div className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:border-chat-primary">
+                  <UsersIcon className="h-8 w-8 text-chat-primary mb-2" />
+                  <h3 className="font-medium">Group Chats</h3>
+                  <p className="text-sm text-gray-500">Collaborate with multiple people at once</p>
+                </div>
+              </DrawerTrigger>
+              <DrawerContent>
+                <div className="p-4 h-[80vh] overflow-auto">
+                  <ChatSidebar />
+                </div>
+              </DrawerContent>
+            </Drawer>
+            <Drawer>
+              <DrawerTrigger asChild>
+                <div className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:border-chat-primary">
+                  <FileIcon className="h-8 w-8 text-chat-primary mb-2" />
+                  <h3 className="font-medium">File Sharing</h3>
+                  <p className="text-sm text-gray-500">Share images and documents easily</p>
+                </div>
+              </DrawerTrigger>
+              <DrawerContent>
+                <div className="p-4 h-[80vh] overflow-auto">
+                  <ChatSidebar />
+                </div>
+              </DrawerContent>
+            </Drawer>
+            <Drawer>
+              <DrawerTrigger asChild>
+                <div className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:border-chat-primary">
+                  <UserRoundIcon className="h-8 w-8 text-chat-primary mb-2" />
+                  <h3 className="font-medium">User Profiles</h3>
+                  <p className="text-sm text-gray-500">View status and information</p>
+                </div>
+              </DrawerTrigger>
+              <DrawerContent>
+                <div className="p-4 h-[80vh] overflow-auto">
+                  <ChatSidebar />
+                </div>
+              </DrawerContent>
+            </Drawer>
           </div>
         </div>
       </div>
@@ -233,7 +287,7 @@ interface MessageProps {
   isOwnMessage: boolean;
   showAvatar: boolean;
   senderName?: string;
-  formatMessageTime: (timestamp: string) => string; // Added formatMessageTime as a prop
+  formatMessageTime: (timestamp: string) => string;
 }
 
 const Message = ({ message, isOwnMessage, showAvatar, senderName, formatMessageTime }: MessageProps) => {
