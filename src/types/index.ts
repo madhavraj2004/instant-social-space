@@ -9,6 +9,8 @@ export type User = {
 };
 
 export type Message = {
+  type: string;
+  senderAvatar: string;
   id: string;
   senderId: string;
   content: string;

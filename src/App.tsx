@@ -25,6 +25,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/chat" element={<ChatConversation />} />
+          <Route path="/chat/chatsidebar" element={<ChatSidebar />} />
           {/* ADD ALL CUSTOM ROUTES BELOW THE CATCH-ALL "*" ROUTE */}
           {/* Example: <Route path="/custom" element={<CustomComponent />} /> */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

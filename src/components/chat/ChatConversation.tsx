@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Paperclip, Send, Image } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
+import Message from '@/components/chat/Message';
 
 const ChatConversation = () => {
   const { activeChat, currentUser, sendMessage } = useChat();
@@ -14,6 +16,7 @@ const ChatConversation = () => {
   const [isUploading, setIsUploading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   // Scroll to bottom whenever messages change
@@ -35,25 +38,45 @@ const ChatConversation = () => {
             Select a chat or start a new conversation to begin messaging
           </p>
           <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div
+              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md"
+              onClick={() => navigate('/components/chat/ChatSidebar.tsx')}
+            >
               <MessageCircleIcon className="h-8 w-8 text-chat-primary mb-2" />
               <h3 className="font-medium">Direct Messages</h3>
-              <p className="text-sm text-gray-500">Connect one-on-one with your contacts</p>
+              <p className="text-sm text-gray-500">
+                Connect one-on-one with your contacts
+              </p>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div
+              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md"
+              onClick={() => navigate('/components/chat/ChatSidebar')}
+            >
               <UsersIcon className="h-8 w-8 text-chat-primary mb-2" />
               <h3 className="font-medium">Group Chats</h3>
-              <p className="text-sm text-gray-500">Collaborate with multiple people at once</p>
+              <p className="text-sm text-gray-500">
+                Collaborate with multiple people at once
+              </p>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div
+              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md"
+              onClick={() => navigate('/components/chat/ChatSidebar')}
+            >
               <FileIcon className="h-8 w-8 text-chat-primary mb-2" />
               <h3 className="font-medium">File Sharing</h3>
-              <p className="text-sm text-gray-500">Share images and documents easily</p>
+              <p className="text-sm text-gray-500">
+                Share images and documents easily
+              </p>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div
+              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md"
+              onClick={() => navigate('/components/chat/ChatSidebar')}
+            >
               <UserRoundIcon className="h-8 w-8 text-chat-primary mb-2" />
               <h3 className="font-medium">User Profiles</h3>
-              <p className="text-sm text-gray-500">View status and information</p>
+              <p className="text-sm text-gray-500">
+                View status and information
+              </p>
             </div>
           </div>
         </div>
@@ -90,7 +113,6 @@ const ChatConversation = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
@@ -102,22 +124,20 @@ const ChatConversation = () => {
 
     setIsUploading(true);
 
-    // In a real app, you'd upload to a storage service
-    // Here we'll use FileReader to get a data URL
     const reader = new FileReader();
     reader.onloadend = () => {
       const fileUrl = reader.result as string;
       const fileType = file.type.startsWith('image/') ? 'image' : 'document';
-      
+
       sendMessage(`Sent a ${fileType}`, fileUrl, fileType as any);
       setIsUploading(false);
-      
+
       toast({
         title: "File shared",
         description: `${file.name} has been shared`,
       });
     };
-    
+
     reader.onerror = () => {
       toast({
         title: "Upload failed",
@@ -126,10 +146,9 @@ const ChatConversation = () => {
       });
       setIsUploading(false);
     };
-    
+
     reader.readAsDataURL(file);
-    
-    // Reset the input
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -141,7 +160,7 @@ const ChatConversation = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col bg-gray-50">
       {/* Chat header */}
       <div className="p-4 border-b flex items-center justify-between bg-white">
         <div className="flex items-center">
@@ -159,7 +178,7 @@ const ChatConversation = () => {
             )}
           </Avatar>
           <div>
-            <h2 className="font-semibold">{getChatName()}</h2>
+            <h2 className="font-semibold text-gray-800">{getChatName()}</h2>
             <p className="text-xs text-gray-500">{getChatParticipants()}</p>
           </div>
         </div>
@@ -218,7 +237,7 @@ const ChatConversation = () => {
           <Button
             onClick={handleSendMessage}
             disabled={!messageInput.trim() || isUploading}
-            className="bg-chat-primary hover:bg-chat-accent"
+            className="bg-blue-500 hover:bg-blue-600 text-white"
           >
             <Send className="h-4 w-4" />
           </Button>
@@ -228,76 +247,10 @@ const ChatConversation = () => {
   );
 };
 
-interface MessageProps {
-  message: MessageType;
-  isOwnMessage: boolean;
-  showAvatar: boolean;
-  senderName?: string;
-  formatMessageTime: (timestamp: string) => string; // Added formatMessageTime as a prop
-}
-
-const Message = ({ message, isOwnMessage, showAvatar, senderName, formatMessageTime }: MessageProps) => {
-  return (
-    <div
-      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} message-appear`}
-    >
-      <div className={`flex ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} max-w-[80%]`}>
-        {showAvatar && !isOwnMessage && (
-          <Avatar className="h-8 w-8 mt-1 mx-2">
-            <img 
-              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330" 
-              alt={senderName} 
-            />
-          </Avatar>
-        )}
-        <div>
-          {showAvatar && !isOwnMessage && (
-            <div className="text-xs text-gray-500 mb-1 ml-1">{senderName}</div>
-          )}
-          <div className="space-y-1">
-            {message.fileUrl && message.fileType === 'image' && (
-              <div className={`${isOwnMessage ? 'bg-chat-primary text-white' : 'bg-gray-100'} rounded-lg p-1`}>
-                <img
-                  src={message.fileUrl}
-                  alt="Shared image"
-                  className="max-h-60 rounded-lg object-contain"
-                />
-              </div>
-            )}
-            {(!message.fileUrl || message.fileType !== 'image') && (
-              <div
-                className={`px-4 py-2 rounded-lg ${
-                  isOwnMessage
-                    ? 'bg-chat-primary text-white rounded-tr-none'
-                    : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              </div>
-            )}
-            <div
-              className={`text-xs text-gray-500 ${
-                isOwnMessage ? 'text-right' : 'text-left'
-              }`}
-            >
-              {formatMessageTime(message.timestamp)}
-              {isOwnMessage && (
-                <span className="ml-1">
-                  {message.read ? '✓✓' : '✓'}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Icons for the welcome screen
 const MessageCircleIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
   </svg>
 );
 
