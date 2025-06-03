@@ -7,8 +7,6 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Paperclip, Send, Image } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
-import Message from '@/components/chat/Message';
 
 const ChatConversation = () => {
   const { activeChat, currentUser, sendMessage } = useChat();
@@ -18,6 +16,7 @@ const ChatConversation = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Scroll to bottom whenever messages change
   useEffect(() => {
@@ -26,6 +25,17 @@ const ChatConversation = () => {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
   }, [activeChat?.messages]);
+
+  const handleShowSidebar = () => {
+    // For mobile, we'll use a drawer
+    if (window.innerWidth < 768) {
+      // Drawer will be triggered by the button click
+      return;
+    } else {
+      // For desktop, we'll navigate to the chat route
+      navigate('/chat');
+    }
+  };
 
   if (!activeChat) {
     return (
@@ -38,45 +48,25 @@ const ChatConversation = () => {
             Select a chat or start a new conversation to begin messaging
           </p>
           <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-            <div
-              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md"
-              onClick={() => navigate('/components/chat/ChatSidebar.tsx')}
-            >
+            <div className="bg-white p-4 rounded-lg shadow-sm border">
               <MessageCircleIcon className="h-8 w-8 text-chat-primary mb-2" />
               <h3 className="font-medium">Direct Messages</h3>
-              <p className="text-sm text-gray-500">
-                Connect one-on-one with your contacts
-              </p>
+              <p className="text-sm text-gray-500">Connect one-on-one with your contacts</p>
             </div>
-            <div
-              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md"
-              onClick={() => navigate('/components/chat/ChatSidebar')}
-            >
+            <div className="bg-white p-4 rounded-lg shadow-sm border">
               <UsersIcon className="h-8 w-8 text-chat-primary mb-2" />
               <h3 className="font-medium">Group Chats</h3>
-              <p className="text-sm text-gray-500">
-                Collaborate with multiple people at once
-              </p>
+              <p className="text-sm text-gray-500">Collaborate with multiple people at once</p>
             </div>
-            <div
-              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md"
-              onClick={() => navigate('/components/chat/ChatSidebar')}
-            >
+            <div className="bg-white p-4 rounded-lg shadow-sm border">
               <FileIcon className="h-8 w-8 text-chat-primary mb-2" />
               <h3 className="font-medium">File Sharing</h3>
-              <p className="text-sm text-gray-500">
-                Share images and documents easily
-              </p>
+              <p className="text-sm text-gray-500">Share images and documents easily</p>
             </div>
-            <div
-              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md"
-              onClick={() => navigate('/components/chat/ChatSidebar')}
-            >
+            <div className="bg-white p-4 rounded-lg shadow-sm border">
               <UserRoundIcon className="h-8 w-8 text-chat-primary mb-2" />
               <h3 className="font-medium">User Profiles</h3>
-              <p className="text-sm text-gray-500">
-                View status and information
-              </p>
+              <p className="text-sm text-gray-500">View status and information</p>
             </div>
           </div>
         </div>
@@ -241,6 +231,72 @@ const ChatConversation = () => {
           >
             <Send className="h-4 w-4" />
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface MessageProps {
+  message: MessageType;
+  isOwnMessage: boolean;
+  showAvatar: boolean;
+  senderName?: string;
+  formatMessageTime: (timestamp: string) => string; // Added formatMessageTime as a prop
+}
+
+const Message = ({ message, isOwnMessage, showAvatar, senderName, formatMessageTime }: MessageProps) => {
+  return (
+    <div
+      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} message-appear`}
+    >
+      <div className={`flex ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} max-w-[80%]`}>
+        {showAvatar && !isOwnMessage && (
+          <Avatar className="h-8 w-8 mt-1 mx-2">
+            <img 
+              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330" 
+              alt={senderName} 
+            />
+          </Avatar>
+        )}
+        <div>
+          {showAvatar && !isOwnMessage && (
+            <div className="text-xs text-gray-500 mb-1 ml-1">{senderName}</div>
+          )}
+          <div className="space-y-1">
+            {message.fileUrl && message.fileType === 'image' && (
+              <div className={`${isOwnMessage ? 'bg-chat-primary text-white' : 'bg-gray-100'} rounded-lg p-1`}>
+                <img
+                  src={message.fileUrl}
+                  alt="Shared image"
+                  className="max-h-60 rounded-lg object-contain"
+                />
+              </div>
+            )}
+            {(!message.fileUrl || message.fileType !== 'image') && (
+              <div
+                className={`px-4 py-2 rounded-lg ${
+                  isOwnMessage
+                    ? 'bg-chat-primary text-white rounded-tr-none'
+                    : 'bg-gray-100 text-gray-800 rounded-tl-none'
+                }`}
+              >
+                <p className="whitespace-pre-wrap">{message.content}</p>
+              </div>
+            )}
+            <div
+              className={`text-xs text-gray-500 ${
+                isOwnMessage ? 'text-right' : 'text-left'
+              }`}
+            >
+              {formatMessageTime(message.timestamp)}
+              {isOwnMessage && (
+                <span className="ml-1">
+                  {message.read ? '✓✓' : '✓'}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
