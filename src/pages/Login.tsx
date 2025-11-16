@@ -42,18 +42,16 @@ const Login = () => {
       // Sign in with Firebase
       await signInWithEmailAndPassword(auth, email, password);
 
-      // Update context auth state
-      setIsAuthenticated(true);
-
       // Show success toast
       toast({
         title: 'Success',
         description: 'Login successful! Redirecting...'
       });
 
-      // Navigate straight to /chat
-      navigate('/chat');
-
+      // Wait a brief moment for auth state to propagate, then navigate
+      setTimeout(() => {
+        navigate('/chat');
+      }, 100);
 
     } catch (error: any) {
       console.error('Login error:', error);
