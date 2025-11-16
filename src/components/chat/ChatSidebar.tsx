@@ -5,87 +5,33 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { defineConfig, ConfigEnv, UserConfig } from "vite";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Users, MessageCircle, Search, PlusCircle } from 'lucide-react';
 import UserItem from './UserItem';
+import UserSearch from './UserSearch';
 
 const ChatSidebar = () => {
-  const { chats, users, activeChat, setActiveChat, createChat, readMessages } = useChat();
+  const { chats, activeChat, setActiveChat } = useChat();
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'chats' | 'users' | 'add-people'>('chats');
-  const [newGroupName, setNewGroupName] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
-  const [inviteEmail, setInviteEmail] = useState('');
+  const [showUserSearch, setShowUserSearch] = useState(false);
 
   // Filter chats based on search term
   const filteredChats = chats.filter(chat => {
-    if (chat.type === 'direct') {
-      return chat.participants.some(user =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    } else {
-      return chat.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    if (chat.type === 'direct' && chat.name) {
+      return chat.name.toLowerCase().includes(searchTerm.toLowerCase());
+    } else if (chat.type === 'group' && chat.name) {
+      return chat.name.toLowerCase().includes(searchTerm.toLowerCase());
     }
+    return true;
   });
-
-  // Filter users based on search term
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const handleChatClick = (chat: Chat) => {
     setActiveChat(chat);
-    readMessages(chat.id);
   };
 
-  const handleCreateDirectChat = (user: User) => {
-    createChat([user]);
-    setActiveTab('chats');
-  };
-
-  const handleCreateGroupChat = () => {
-    if (selectedUsers.length > 0 && newGroupName) {
-      createChat(selectedUsers, newGroupName);
-      setSelectedUsers([]);
-      setNewGroupName('');
-      setActiveTab('chats');
-    }
-  };
-
-  const toggleUserSelection = (user: User) => {
-    if (selectedUsers.some(u => u.id === user.id)) {
-      setSelectedUsers(selectedUsers.filter(u => u.id !== user.id));
-    } else {
-      setSelectedUsers([...selectedUsers, user]);
-    }
-  };
-
-  const handleInvite = async () => {
-    try {
-      // API call to send an invitation
-      const response = await fetch('/api/invite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: inviteEmail }), // Send inviteEmail to the server
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send invitation');
-      }
-
-      const data = await response.json();
-      console.log('Invitation sent:', data);
-
-      // Reset the input field and provide feedback
-      setInviteEmail('');
-      alert('Invitation sent successfully!');
-    } catch (error) {
-      console.error('Failed to send invitation:', error);
-      alert('Failed to send invitation.');
-    }
+  const handleChatCreated = (chatId: string) => {
+    setShowUserSearch(false);
+    // The chat will be loaded automatically via realtime
   };
 
   const getChatName = (chat: Chat) => {
