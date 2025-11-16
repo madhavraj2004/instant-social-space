@@ -26,6 +26,7 @@ interface ChatContextType {
   readMessages: (chatId: string) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (value: boolean) => void;
+  isLoading: boolean;
 
   // Add the initializeUserChats method
   initializeUserChats: (userId: string) => Promise<void>;
@@ -42,7 +43,8 @@ const defaultContextValue: ChatContextType = {
   readMessages: () => {},
   isAuthenticated: false,
   setIsAuthenticated: () => {},
-  initializeUserChats: async () => {}, // Provide an empty implementation for the default context
+  isLoading: true,
+  initializeUserChats: async () => {},
 };
 
 export const ChatContext = createContext<ChatContextType>(defaultContextValue);
@@ -53,6 +55,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
   // Listen to Firebase auth state changes
@@ -69,6 +72,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setCurrentUser(user);
         setIsAuthenticated(true);
+        setIsLoading(false);
         
         // Load user's chats
         initializeUserChats(user.id);
@@ -77,6 +81,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(null);
         setIsAuthenticated(false);
         setChats([]);
+        setIsLoading(false);
       }
     });
     
@@ -203,7 +208,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     readMessages,
     isAuthenticated,
     setIsAuthenticated,
-    initializeUserChats, // Expose initializeUserChats in the context
+    isLoading,
+    initializeUserChats,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
