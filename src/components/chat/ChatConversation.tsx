@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/context/ChatContext';
 import { Message as MessageType } from '@/types';
 import { Avatar } from '@/components/ui/avatar';
@@ -16,7 +17,6 @@ const ChatConversation = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   // Scroll to bottom whenever messages change
   useEffect(() => {

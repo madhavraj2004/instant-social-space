@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ChatLayout from "./components/chat/ChatLayout";
+import { ChatProvider } from "./context/ChatContext";
 
 const queryClient = new QueryClient();
 
@@ -18,16 +18,15 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/chat" element={<ChatConversation />} />
-          {/* ADD ALL CUSTOM ROUTES BELOW THE CATCH-ALL "*" ROUTE */}
-          {/* Example: <Route path="/custom" element={<CustomComponent />} /> */}
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <ChatProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/chat" element={<Index />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ChatProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

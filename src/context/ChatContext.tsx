@@ -113,6 +113,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newMessage: Message = {
       id: `m${Date.now()}`,
       senderId: currentUser.id,
+      senderAvatar: currentUser.avatar,
+      type: fileType || 'text',
       content,
       timestamp: new Date().toISOString(),
       read: false,
