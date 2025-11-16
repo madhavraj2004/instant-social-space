@@ -1,21 +1,21 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChatProvider, useChat } from '@/context/ChatContext';
+import { useChat } from '@/context/ChatContext';
 import ChatLayout from '@/components/chat/ChatLayout';
 import { useToast } from '@/hooks/use-toast';
 
-// Wrapper component to check authentication
-const ChatApp = () => {
+const Index = () => {
   const { isAuthenticated, currentUser, chats } = useChat();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log("Index - Auth state:", isAuthenticated, "User:", currentUser);
+    
     if (!isAuthenticated) {
       navigate('/login');
     } else if (isAuthenticated && currentUser) {
-      // User is logged in, welcome them
       toast({
         title: `Welcome, ${currentUser.name}!`,
         description: `You have ${chats.length} conversations`
@@ -23,22 +23,11 @@ const ChatApp = () => {
     }
   }, [isAuthenticated, navigate, currentUser, chats, toast]);
 
-  // Add console logs for debugging
-  console.log("Authentication state:", isAuthenticated);
-  console.log("Current user:", currentUser);
-  console.log("Current route:", window.location.pathname);
-
   if (!isAuthenticated) return null;
 
-  return <ChatLayout />;
-};
-
-const Index = () => {
   return (
     <div className="h-screen">
-      <ChatProvider>
-        <ChatApp />
-      </ChatProvider>
+      <ChatLayout />
     </div>
   );
 };
