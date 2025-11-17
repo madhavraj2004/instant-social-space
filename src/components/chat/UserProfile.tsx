@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/context/ChatContext';
@@ -9,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserRound, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const UserProfile = () => {
   const { currentUser } = useChat();
@@ -20,13 +20,22 @@ const UserProfile = () => {
     setStatus(value as 'online' | 'offline' | 'away' | 'busy');
   };
   
-  const handleLogout = () => {
-    localStorage.removeItem('currentUserId');
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully"
-    });
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully"
+      });
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useChat } from '@/context/ChatContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,56 +9,90 @@ import {
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { UserRound, Eye, EyeOff } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/config/firebase';
+import { supabase } from '@/integrations/supabase/client';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+  email: z.string().trim().email({ message: "Invalid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" })
+});
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { setIsAuthenticated } = useChat();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/');
+      }
+    });
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (!email.trim() || !password.trim()) {
-      toast({
-        title: 'Error',
-        description: !email.trim()
-          ? 'Please enter your email'
-          : 'Please enter your password',
-        variant: 'destructive'
-      });
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Sign in with Firebase
-      await signInWithEmailAndPassword(auth, email, password);
+      // Validate input
+      const validatedData = loginSchema.parse({ email, password });
 
-      // Show success toast
-      toast({
-        title: 'Success',
-        description: 'Login successful! Redirecting...'
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: validatedData.email,
+        password: validatedData.password,
       });
 
-      // Wait a brief moment for auth state to propagate, then navigate
-      setTimeout(() => {
-        navigate('/chat');
-      }, 100);
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          toast({
+            title: 'Error',
+            description: 'Invalid email or password',
+            variant: 'destructive'
+          });
+        } else if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: 'Error',
+            description: 'Please verify your email before logging in',
+            variant: 'destructive'
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: error.message,
+            variant: 'destructive'
+          });
+        }
+        return;
+      }
+
+      if (data.session) {
+        toast({
+          title: 'Success',
+          description: 'Login successful!'
+        });
+        navigate('/');
+      }
 
     } catch (error: any) {
-      console.error('Login error:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Invalid email or password',
-        variant: 'destructive'
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          title: 'Validation Error',
+          description: error.errors[0].message,
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred',
+          variant: 'destructive'
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +101,7 @@ const Login = () => {
   const toggleShowPassword = () => setShowPassword(prev => !prev);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 flex flex-col items-center">
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
@@ -89,6 +122,7 @@ const Login = () => {
                 placeholder="Enter your email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                disabled={isLoading}
                 required
               />
             </div>
@@ -101,6 +135,7 @@ const Login = () => {
                   placeholder="Enter your password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  disabled={isLoading}
                   required
                 />
                 <Button
@@ -109,6 +144,7 @@ const Login = () => {
                   size="icon"
                   className="absolute right-0 top-0"
                   onClick={toggleShowPassword}
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
