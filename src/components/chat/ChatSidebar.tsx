@@ -9,15 +9,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Users, MessageCircle, Search, PlusCircle } from 'lucide-react';
 import UserItem from './UserItem';
 import UserSearch from './UserSearch';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const ChatSidebar = () => {
-  const { chats, activeChat, setActiveChat, users } = useChat();
+  const { chats, activeChat, setActiveChat, users, currentUser } = useChat();
   const [searchTerm, setSearchTerm] = useState('');
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [activeTab, setActiveTab] = useState<'chats' | 'users' | 'add-people'>('chats');
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
+  const { toast } = useToast();
 
   // Filter chats based on search term
   const filteredChats = chats.filter(chat => {
@@ -65,11 +68,31 @@ const ChatSidebar = () => {
     console.log('Creating direct chat with:', user);
   };
 
-  const handleInvite = () => {
+  const handleInvite = async () => {
     if (inviteEmail) {
-      // TODO: Invite user logic
-      console.log('Inviting user:', inviteEmail);
-      setInviteEmail('');
+      try {
+        const { error } = await supabase.functions.invoke('send-invite', {
+          body: {
+            email: inviteEmail,
+            inviterName: currentUser?.name || 'Someone',
+          },
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Invite sent",
+          description: `Invitation sent to ${inviteEmail}`,
+        });
+        setInviteEmail('');
+      } catch (error) {
+        console.error('Error sending invite:', error);
+        toast({
+          title: "Error",
+          description: "Failed to send invitation.",
+          variant: "destructive",
+        });
+      }
     }
   };
 

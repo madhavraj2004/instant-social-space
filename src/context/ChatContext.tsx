@@ -1,8 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User, Message, Chat } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/config/firebase';
+import { supabase } from '@/integrations/supabase/client';
 
 // Sample users data
 const sampleUsers: User[] = [
@@ -58,16 +57,45 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  // Listen to Firebase auth state changes
+  // Listen to Supabase auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        // User is signed in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(session.user.id);
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadUserProfile(session.user.id);
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        setChats([]);
+        setIsLoading(false);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load user profile from Supabase
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profile) {
         const user: User = {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || 'User',
-          avatar: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
-          status: 'online' as const,
+          id: profile.id,
+          name: profile.display_name || 'User',
+          avatar: profile.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
+          status: (profile.status as User['status']) || 'online',
         };
         
         setCurrentUser(user);
@@ -76,28 +104,120 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Load user's chats
         initializeUserChats(user.id);
-      } else {
-        // User is signed out
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-        setChats([]);
-        setIsLoading(false);
+        
+        // Load all users
+        loadAllUsers();
       }
-    });
-    
-    // Cleanup subscription
-    return () => unsubscribe();
-  }, []);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      setIsLoading(false);
+    }
+  };
 
-  // Load user's chats from the server
+  // Load all users from Supabase
+  const loadAllUsers = async () => {
+    try {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (profiles) {
+        const allUsers: User[] = profiles.map(profile => ({
+          id: profile.id,
+          name: profile.display_name || 'User',
+          avatar: profile.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
+          status: (profile.status as User['status']) || 'offline',
+        }));
+        
+        setUsers(allUsers);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
+  // Load user's chats from Supabase
   const loadUserChats = async (userId: string) => {
     try {
-      // Fetch user chats from the server
-      const response = await fetch(`/api/chats/${userId}`);
-      const chats = await response.json();
+      // Fetch user's chat participants
+      const { data: chatParticipants } = await supabase
+        .from('chat_participants')
+        .select('chat_id')
+        .eq('user_id', userId);
 
-      // Update state with fetched chats
-      setChats(chats);
+      if (!chatParticipants || chatParticipants.length === 0) {
+        setChats([]);
+        return;
+      }
+
+      const chatIds = chatParticipants.map(cp => cp.chat_id);
+
+      // Fetch chats with their participants and messages
+      const { data: chatsData } = await supabase
+        .from('chats')
+        .select(`
+          id,
+          type,
+          name,
+          created_at,
+          chat_participants!inner(
+            profiles(id, display_name, avatar_url, status)
+          ),
+          messages(
+            id,
+            content,
+            created_at,
+            read,
+            file_url,
+            file_type,
+            sender_id,
+            profiles!messages_sender_id_fkey(id, display_name, avatar_url)
+          )
+        `)
+        .in('id', chatIds)
+        .order('created_at', { ascending: false });
+
+      if (chatsData) {
+        const formattedChats: Chat[] = chatsData.map((chat: any) => {
+          const participants = chat.chat_participants
+            .map((cp: any) => cp.profiles)
+            .filter((p: any) => p)
+            .map((p: any) => ({
+              id: p.id,
+              name: p.display_name || 'User',
+              avatar: p.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e',
+              status: p.status || 'offline',
+            }));
+
+          const messages = (chat.messages || [])
+            .map((m: any) => ({
+              id: m.id,
+              senderId: m.sender_id,
+              senderAvatar: m.profiles?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e',
+              type: m.file_type || 'text',
+              content: m.content,
+              timestamp: m.created_at,
+              read: m.read,
+              fileUrl: m.file_url,
+              fileType: m.file_type,
+            }))
+            .sort((a: Message, b: Message) => 
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+
+          return {
+            id: chat.id,
+            type: chat.type,
+            name: chat.name,
+            participants,
+            messages,
+            lastMessage: messages[messages.length - 1],
+            unreadCount: messages.filter((m: Message) => !m.read && m.senderId !== userId).length,
+          };
+        });
+
+        setChats(formattedChats);
+      }
     } catch (error) {
       console.error("Error fetching user chats:", error);
     }
@@ -108,37 +228,114 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await loadUserChats(userId);
   };
 
-  const sendMessage = (
+  // Subscribe to realtime message updates
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const channel = supabase
+      .channel('messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        async (payload) => {
+          console.log('New message received:', payload);
+          
+          // Find the chat that this message belongs to
+          const chatId = (payload.new as any).chat_id;
+          const chat = chats.find(c => c.id === chatId);
+          
+          if (chat) {
+            // Fetch the sender's profile
+            const { data: senderProfile } = await supabase
+              .from('profiles')
+              .select('avatar_url')
+              .eq('id', (payload.new as any).sender_id)
+              .single();
+
+            const newMessage: Message = {
+              id: (payload.new as any).id,
+              senderId: (payload.new as any).sender_id,
+              senderAvatar: senderProfile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e',
+              type: (payload.new as any).file_type || 'text',
+              content: (payload.new as any).content,
+              timestamp: (payload.new as any).created_at,
+              read: (payload.new as any).read,
+              fileUrl: (payload.new as any).file_url,
+              fileType: (payload.new as any).file_type,
+            };
+
+            // Update the chat with the new message
+            setChats(prevChats => 
+              prevChats.map(c => 
+                c.id === chatId
+                  ? {
+                      ...c,
+                      messages: [...c.messages, newMessage],
+                      lastMessage: newMessage,
+                      unreadCount: newMessage.senderId !== currentUser.id 
+                        ? (c.unreadCount || 0) + 1 
+                        : c.unreadCount,
+                    }
+                  : c
+              )
+            );
+
+            // Update active chat if it's the one that received the message
+            if (activeChat?.id === chatId) {
+              setActiveChat(prev => 
+                prev ? {
+                  ...prev,
+                  messages: [...prev.messages, newMessage],
+                  lastMessage: newMessage,
+                } : null
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser, chats, activeChat]);
+
+  const sendMessage = async (
     content: string, 
     fileUrl?: string, 
     fileType?: 'image' | 'document' | 'video'
   ) => {
     if (!activeChat || !currentUser) return;
     
-    const newMessage: Message = {
-      id: `m${Date.now()}`,
-      senderId: currentUser.id,
-      senderAvatar: currentUser.avatar,
-      type: fileType || 'text',
-      content,
-      timestamp: new Date().toISOString(),
-      read: false,
-      fileUrl,
-      fileType,
-    };
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          chat_id: activeChat.id,
+          sender_id: currentUser.id,
+          content,
+          file_url: fileUrl,
+          file_type: fileType,
+        });
 
-    const updatedChats = chats.map(chat => {
-      if (chat.id === activeChat.id) {
-        return {
-          ...chat,
-          messages: [...chat.messages, newMessage],
-          lastMessage: newMessage,
-        };
-      }
-      return chat;
-    });
+      if (error) throw error;
 
-    setChats(updatedChats);
+      toast({
+        title: "Message sent",
+        description: "Your message has been delivered.",
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message.",
+        variant: "destructive",
+      });
+    }
   };
 
   const createChat = (participants: User[], name?: string) => {
