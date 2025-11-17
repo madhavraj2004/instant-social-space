@@ -11,9 +11,13 @@ import UserItem from './UserItem';
 import UserSearch from './UserSearch';
 
 const ChatSidebar = () => {
-  const { chats, activeChat, setActiveChat } = useChat();
+  const { chats, activeChat, setActiveChat, users } = useChat();
   const [searchTerm, setSearchTerm] = useState('');
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chats' | 'users' | 'add-people'>('chats');
+  const [newGroupName, setNewGroupName] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
 
   // Filter chats based on search term
   const filteredChats = chats.filter(chat => {
@@ -25,6 +29,11 @@ const ChatSidebar = () => {
     return true;
   });
 
+  // Filter users based on search term
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const handleChatClick = (chat: Chat) => {
     setActiveChat(chat);
   };
@@ -32,6 +41,36 @@ const ChatSidebar = () => {
   const handleChatCreated = (chatId: string) => {
     setShowUserSearch(false);
     // The chat will be loaded automatically via realtime
+  };
+
+  const toggleUserSelection = (user: User) => {
+    setSelectedUsers(prev => 
+      prev.some(u => u.id === user.id)
+        ? prev.filter(u => u.id !== user.id)
+        : [...prev, user]
+    );
+  };
+
+  const handleCreateGroupChat = () => {
+    if (selectedUsers.length > 0 && newGroupName) {
+      // TODO: Create group chat logic
+      console.log('Creating group chat:', newGroupName, selectedUsers);
+      setNewGroupName('');
+      setSelectedUsers([]);
+    }
+  };
+
+  const handleCreateDirectChat = (user: User) => {
+    // TODO: Create direct chat logic
+    console.log('Creating direct chat with:', user);
+  };
+
+  const handleInvite = () => {
+    if (inviteEmail) {
+      // TODO: Invite user logic
+      console.log('Inviting user:', inviteEmail);
+      setInviteEmail('');
+    }
   };
 
   const getChatName = (chat: Chat) => {
