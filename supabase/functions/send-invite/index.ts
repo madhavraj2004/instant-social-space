@@ -28,8 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", "");
-    const inviteLink = `${appUrl}/register`;
+    const inviteLink = "https://instant-social-space.vercel.app/register";
 
     const emailResponse = await resend.emails.send({
       from: "Chat App <onboarding@resend.dev>",
