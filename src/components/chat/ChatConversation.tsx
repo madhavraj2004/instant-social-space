@@ -10,7 +10,7 @@ import { Paperclip, Send, Image } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 const ChatConversation = () => {
-  const { activeChat, currentUser, sendMessage } = useChat();
+  const { activeChat, currentUser, sendMessage, uploadFile } = useChat();
   const [messageInput, setMessageInput] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -99,14 +99,14 @@ const ChatConversation = () => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Please upload files smaller than 5MB",
+        description: "Please upload files smaller than 10MB",
         variant: "destructive",
       });
       return;
@@ -114,33 +114,28 @@ const ChatConversation = () => {
 
     setIsUploading(true);
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const fileUrl = reader.result as string;
-      const fileType = file.type.startsWith('image/') ? 'image' : 'document';
-
-      sendMessage(`Sent a ${fileType}`, fileUrl, fileType as any);
-      setIsUploading(false);
-
-      toast({
-        title: "File shared",
-        description: `${file.name} has been shared`,
-      });
-    };
-
-    reader.onerror = () => {
+    try {
+      const result = await uploadFile(file);
+      
+      if (result) {
+        await sendMessage(`Sent a ${result.type}`, result.url, result.type);
+        
+        toast({
+          title: "File shared",
+          description: `${file.name} has been shared`,
+        });
+      }
+    } catch (error) {
       toast({
         title: "Upload failed",
         description: "There was an error uploading your file",
         variant: "destructive",
       });
+    } finally {
       setIsUploading(false);
-    };
-
-    reader.readAsDataURL(file);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
