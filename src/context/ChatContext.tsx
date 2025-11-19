@@ -21,6 +21,7 @@ interface ChatContextType {
   activeChat: Chat | null;
   setActiveChat: (chat: Chat) => void;
   sendMessage: (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video') => void;
+  uploadFile: (file: File) => Promise<{ url: string; type: 'image' | 'document' | 'video' } | null>;
   createChat: (participants: User[], name?: string) => void;
   readMessages: (chatId: string) => void;
   isAuthenticated: boolean;
@@ -38,6 +39,7 @@ const defaultContextValue: ChatContextType = {
   activeChat: null,
   setActiveChat: () => {},
   sendMessage: () => {},
+  uploadFile: async () => null,
   createChat: () => {},
   readMessages: () => {},
   isAuthenticated: false,
@@ -304,6 +306,43 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [currentUser, chats, activeChat]);
 
+  const uploadFile = async (file: File): Promise<{ url: string; type: 'image' | 'document' | 'video' } | null> => {
+    if (!currentUser) return null;
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('chat-files')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-files')
+        .getPublicUrl(fileName);
+
+      // Determine file type
+      let fileType: 'image' | 'document' | 'video' = 'document';
+      if (file.type.startsWith('image/')) {
+        fileType = 'image';
+      } else if (file.type.startsWith('video/')) {
+        fileType = 'video';
+      }
+
+      return { url: publicUrl, type: fileType };
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload file.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const sendMessage = async (
     content: string, 
     fileUrl?: string, 
@@ -401,6 +440,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activeChat,
     setActiveChat,
     sendMessage,
+    uploadFile,
     createChat,
     readMessages,
     isAuthenticated,
