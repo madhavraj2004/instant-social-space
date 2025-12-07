@@ -74,7 +74,7 @@ const UserProfile = () => {
           </div>
           <Separator className="my-4" />
           <div className="flex space-x-2">
-            <Button variant="outline" className="flex-1">
+            <Button variant="outline" className="flex-1" onClick={() => navigate('/profile')}>
               <UserRound className="mr-2 h-4 w-4" />
               Edit Profile
             </Button>

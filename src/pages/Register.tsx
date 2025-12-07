@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { UserRound, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { auth } from '@/config/firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { z } from 'zod';
 
 const registerSchema = z.object({
@@ -51,7 +53,7 @@ const Register = () => {
 
       // Use default avatar if none provided
       const finalAvatarUrl = validatedData.avatarUrl || 
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80';
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(validatedData.name)}&background=random`;
 
       // Sign up with Supabase
       const { data, error } = await supabase.auth.signUp({
@@ -123,24 +125,64 @@ const Register = () => {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`
-        }
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Sign in or sign up with Supabase using the Google user's email
+      // First try to sign in
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: user.uid, // Use Firebase UID as password for Google users
       });
 
-      if (error) {
-        toast({
-          title: 'Error',
-          description: error.message,
-          variant: 'destructive'
+      if (signInError) {
+        // If sign in fails, create a new account
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: user.email!,
+          password: user.uid,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              display_name: user.displayName || user.email?.split('@')[0],
+              avatar_url: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`
+            }
+          }
         });
+
+        if (signUpError) {
+          if (signUpError.message.includes('User already registered')) {
+            toast({
+              title: 'Error',
+              description: 'This email is already registered. Please use email/password to sign in.',
+              variant: 'destructive'
+            });
+          } else {
+            throw signUpError;
+          }
+          return;
+        }
+
+        if (signUpData.session) {
+          toast({
+            title: 'Success',
+            description: 'Account created and logged in successfully!'
+          });
+          navigate('/');
+        }
+      } else if (signInData.session) {
+        toast({
+          title: 'Success',
+          description: 'Login successful!'
+        });
+        navigate('/');
       }
+
     } catch (error: any) {
+      console.error('Google sign-in error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to sign in with Google',
+        description: error.message || 'Failed to sign in with Google',
         variant: 'destructive'
       });
     } finally {
