@@ -28,29 +28,52 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const inviteLink = "https://instant-social-space.vercel.app/register";
+    const loginLink = "https://instant-social-space.vercel.app/login";
+    const registerLink = "https://instant-social-space.vercel.app/register";
 
     const emailResponse = await resend.emails.send({
       from: "Chat App <onboarding@resend.dev>",
       to: [email],
       subject: `${inviterName} invited you to join Chat App!`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">You're invited to Chat App!</h1>
-          <p style="font-size: 16px; color: #555;">
-            ${inviterName} has invited you to join our chat application.
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #333; text-align: center;">You're Invited! 🎉</h1>
+          <p style="font-size: 16px; color: #555; text-align: center;">
+            <strong>${inviterName}</strong> has invited you to join our chat application.
           </p>
-          <p style="font-size: 16px; color: #555;">
-            Click the button below to create your account and start chatting:
-          </p>
-          <a href="${inviteLink}" 
-             style="display: inline-block; background-color: #4F46E5; color: white; 
-                    padding: 12px 24px; text-decoration: none; border-radius: 6px; 
-                    margin: 20px 0; font-weight: bold;">
-            Join Chat App
-          </a>
-          <p style="font-size: 14px; color: #888;">
-            Or copy this link: ${inviteLink}
+          
+          <div style="background-color: #f9fafb; border-radius: 8px; padding: 24px; margin: 24px 0;">
+            <p style="font-size: 16px; color: #333; margin-bottom: 16px; text-align: center;">
+              <strong>Already have an account?</strong>
+            </p>
+            <div style="text-align: center;">
+              <a href="${loginLink}" 
+                 style="display: inline-block; background-color: #4F46E5; color: white; 
+                        padding: 12px 32px; text-decoration: none; border-radius: 6px; 
+                        font-weight: bold;">
+                Sign In
+              </a>
+            </div>
+          </div>
+          
+          <div style="background-color: #f0fdf4; border-radius: 8px; padding: 24px; margin: 24px 0;">
+            <p style="font-size: 16px; color: #333; margin-bottom: 16px; text-align: center;">
+              <strong>New to Chat App?</strong>
+            </p>
+            <div style="text-align: center;">
+              <a href="${registerLink}" 
+                 style="display: inline-block; background-color: #16a34a; color: white; 
+                        padding: 12px 32px; text-decoration: none; border-radius: 6px; 
+                        font-weight: bold;">
+                Create Account
+              </a>
+            </div>
+          </div>
+          
+          <p style="font-size: 14px; color: #888; text-align: center; margin-top: 24px;">
+            Links:<br/>
+            Sign In: ${loginLink}<br/>
+            Create Account: ${registerLink}
           </p>
         </div>
       `,
