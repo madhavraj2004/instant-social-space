@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const ChatSidebar = () => {
-  const { chats, activeChat, setActiveChat, users, currentUser } = useChat();
+  const { chats, activeChat, setActiveChat, users, currentUser, startDirectChat, createChat } = useChat();
   const [searchTerm, setSearchTerm] = useState('');
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [activeTab, setActiveTab] = useState<'chats' | 'users' | 'add-people'>('chats');
@@ -55,8 +55,9 @@ const ChatSidebar = () => {
     return true;
   });
 
-  // Filter users based on search term
+  // Filter users based on search term (exclude current user)
   const filteredUsers = users.filter(user => 
+    user.id !== currentUser?.id &&
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -77,18 +78,17 @@ const ChatSidebar = () => {
     );
   };
 
-  const handleCreateGroupChat = () => {
+  const handleCreateGroupChat = async () => {
     if (selectedUsers.length > 0 && newGroupName) {
-      // TODO: Create group chat logic
-      console.log('Creating group chat:', newGroupName, selectedUsers);
+      await createChat(selectedUsers, newGroupName);
       setNewGroupName('');
       setSelectedUsers([]);
     }
   };
 
-  const handleCreateDirectChat = (user: User) => {
-    // TODO: Create direct chat logic
-    console.log('Creating direct chat with:', user);
+  const handleCreateDirectChat = async (user: User) => {
+    await startDirectChat(user.id);
+    setActiveTab('chats');
   };
 
   const handleCopyLink = async () => {
