@@ -19,28 +19,28 @@ interface ChatContextType {
   users: User[];
   chats: Chat[];
   activeChat: Chat | null;
-  setActiveChat: (chat: Chat) => void;
+  setActiveChat: (chat: Chat | null) => void;
   sendMessage: (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video') => void;
   uploadFile: (file: File) => Promise<{ url: string; type: 'image' | 'document' | 'video' } | null>;
-  createChat: (participants: User[], name?: string) => void;
+  createChat: (participants: User[], name?: string) => Promise<Chat | null>;
+  startDirectChat: (userId: string) => Promise<Chat | null>;
   readMessages: (chatId: string) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (value: boolean) => void;
   isLoading: boolean;
-
-  // Add the initializeUserChats method
   initializeUserChats: (userId: string) => Promise<void>;
 }
 
 const defaultContextValue: ChatContextType = {
   currentUser: null,
-  users: sampleUsers.slice(1),
+  users: [],
   chats: [],
   activeChat: null,
   setActiveChat: () => {},
   sendMessage: () => {},
   uploadFile: async () => null,
-  createChat: () => {},
+  createChat: async () => null,
+  startDirectChat: async () => null,
   readMessages: () => {},
   isAuthenticated: false,
   setIsAuthenticated: () => {},
@@ -52,7 +52,7 @@ export const ChatContext = createContext<ChatContextType>(defaultContextValue);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(sampleUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -377,42 +377,95 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const createChat = (participants: User[], name?: string) => {
-    if (!currentUser) return;
+  const createChat = async (participants: User[], name?: string): Promise<Chat | null> => {
+    if (!currentUser) return null;
     
-    // Check if direct chat already exists
-    if (participants.length === 1) {
-      const existingChat = chats.find(
-        chat => 
-          chat.type === 'direct' && 
-          chat.participants.some(p => p.id === participants[0].id)
-      );
+    try {
+      const chatType = participants.length === 1 ? 'direct' : 'group';
       
-      if (existingChat) {
-        setActiveChat(existingChat);
-        return;
-      }
+      // Create the chat
+      const { data: chatData, error: chatError } = await supabase
+        .from('chats')
+        .insert({
+          type: chatType,
+          name: chatType === 'group' ? name : null,
+        })
+        .select()
+        .single();
+
+      if (chatError) throw chatError;
+
+      // Add all participants including current user
+      const participantInserts = [currentUser, ...participants].map(p => ({
+        chat_id: chatData.id,
+        user_id: p.id,
+      }));
+
+      const { error: participantsError } = await supabase
+        .from('chat_participants')
+        .insert(participantInserts);
+
+      if (participantsError) throw participantsError;
+
+      // Create the chat object
+      const newChat: Chat = {
+        id: chatData.id,
+        type: chatType,
+        name: chatType === 'group' ? name : participants[0].name,
+        participants: [currentUser, ...participants],
+        messages: [],
+      };
+
+      setChats(prev => [newChat, ...prev]);
+      setActiveChat(newChat);
+
+      toast({
+        title: "Chat created",
+        description: participants.length === 1 
+          ? `Chat with ${participants[0].name} started` 
+          : `Group "${name}" created`,
+      });
+
+      return newChat;
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create chat.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const startDirectChat = async (userId: string): Promise<Chat | null> => {
+    if (!currentUser || userId === currentUser.id) return null;
+
+    // Check if direct chat already exists
+    const existingChat = chats.find(
+      chat => 
+        chat.type === 'direct' && 
+        chat.participants.some(p => p.id === userId) &&
+        chat.participants.some(p => p.id === currentUser.id)
+    );
+    
+    if (existingChat) {
+      setActiveChat(existingChat);
+      return existingChat;
     }
 
-    const chatParticipants = [currentUser, ...participants];
-    const newChat: Chat = {
-      id: `c${Date.now()}`,
-      type: participants.length === 1 ? 'direct' : 'group',
-      name: participants.length === 1 ? undefined : name,
-      participants: chatParticipants,
-      messages: [],
-    };
+    // Find the user to chat with
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) {
+      toast({
+        title: "Error",
+        description: "User not found.",
+        variant: "destructive",
+      });
+      return null;
+    }
 
-    const updatedChats = [...chats, newChat];
-    setChats(updatedChats);
-    setActiveChat(newChat);
-
-    toast({
-      title: "Chat created",
-      description: participants.length === 1 
-        ? `Chat with ${participants[0].name} started` 
-        : `Group "${name}" created`,
-    });
+    return createChat([targetUser]);
   };
 
   const readMessages = (chatId: string) => {
@@ -442,6 +495,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sendMessage,
     uploadFile,
     createChat,
+    startDirectChat,
     readMessages,
     isAuthenticated,
     setIsAuthenticated,
