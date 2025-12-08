@@ -128,6 +128,7 @@ export type Database = {
           created_at: string | null
           display_name: string | null
           id: string
+          referral_code: string | null
           status: string | null
           updated_at: string | null
         }
@@ -136,6 +137,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id: string
+          referral_code?: string | null
           status?: string | null
           updated_at?: string | null
         }
@@ -144,10 +146,47 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id?: string
+          referral_code?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          id: string
+          referred_id: string
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          referred_id: string
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

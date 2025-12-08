@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChat } from '@/context/ChatContext';
 import { User, Chat } from '@/types';
 import { Avatar } from '@/components/ui/avatar';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Users, MessageCircle, Search, PlusCircle, Copy, Check, Share2 } from 'lucide-react';
 import UserItem from './UserItem';
 import UserSearch from './UserSearch';
-
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const ChatSidebar = () => {
@@ -20,9 +20,30 @@ const ChatSidebar = () => {
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [copied, setCopied] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const inviteLink = `${window.location.origin}/register`;
+  // Fetch current user's referral code
+  useEffect(() => {
+    const fetchReferralCode = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('referral_code')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (data?.referral_code) {
+          setReferralCode(data.referral_code);
+        }
+      }
+    };
+    fetchReferralCode();
+  }, []);
+
+  const inviteLink = referralCode 
+    ? `${window.location.origin}/register?ref=${referralCode}`
+    : `${window.location.origin}/register`;
 
   // Filter chats based on search term
   const filteredChats = chats.filter(chat => {

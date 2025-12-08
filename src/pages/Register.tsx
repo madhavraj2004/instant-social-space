@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { UserRound, Eye, EyeOff } from 'lucide-react';
+import { UserRound, Eye, EyeOff, Gift } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { auth } from '@/config/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
@@ -19,6 +19,9 @@ const registerSchema = z.object({
 });
 
 const Register = () => {
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get('ref');
+  const [referrerName, setReferrerName] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,14 +32,28 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if user is already logged in
+  // Check if user is already logged in and fetch referrer info
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate('/');
       }
     });
-  }, [navigate]);
+
+    // Fetch referrer's name if referral code exists
+    if (referralCode) {
+      supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('referral_code', referralCode)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.display_name) {
+            setReferrerName(data.display_name);
+          }
+        });
+    }
+  }, [navigate, referralCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +109,22 @@ const Register = () => {
       }
 
       if (data.user) {
+        // Create referral record if there's a referral code
+        if (referralCode) {
+          const { data: referrerData } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('referral_code', referralCode)
+            .maybeSingle();
+
+          if (referrerData?.id) {
+            await supabase.from('referrals').insert({
+              referrer_id: referrerData.id,
+              referred_id: data.user.id
+            });
+          }
+        }
+
         toast({
           title: 'Success',
           description: 'Account created successfully! Redirecting...'
@@ -163,6 +196,24 @@ const Register = () => {
           return;
         }
 
+        if (signUpData.user) {
+          // Create referral record if there's a referral code
+          if (referralCode) {
+            const { data: referrerData } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('referral_code', referralCode)
+              .maybeSingle();
+
+            if (referrerData?.id) {
+              await supabase.from('referrals').insert({
+                referrer_id: referrerData.id,
+                referred_id: signUpData.user.id
+              });
+            }
+          }
+        }
+
         if (signUpData.session) {
           toast({
             title: 'Success',
@@ -198,6 +249,12 @@ const Register = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 flex flex-col items-center">
+          {referrerName && (
+            <div className="flex items-center gap-2 text-sm text-primary bg-primary/10 px-3 py-1.5 rounded-full mb-2">
+              <Gift className="h-4 w-4" />
+              <span>Invited by <strong>{referrerName}</strong></span>
+            </div>
+          )}
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
             <UserRound className="h-8 w-8 text-primary" />
           </div>
