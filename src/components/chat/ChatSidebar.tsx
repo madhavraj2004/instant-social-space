@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, MessageCircle, Search, PlusCircle } from 'lucide-react';
+import { Users, MessageCircle, Search, PlusCircle, Copy, Check, Share2 } from 'lucide-react';
 import UserItem from './UserItem';
 import UserSearch from './UserSearch';
-import { supabase } from '@/integrations/supabase/client';
+
 import { useToast } from '@/hooks/use-toast';
 
 const ChatSidebar = () => {
@@ -19,8 +19,10 @@ const ChatSidebar = () => {
   const [activeTab, setActiveTab] = useState<'chats' | 'users' | 'add-people'>('chats');
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
-  const [inviteEmail, setInviteEmail] = useState('');
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+
+  const inviteLink = `${window.location.origin}/register`;
 
   // Filter chats based on search term
   const filteredChats = chats.filter(chat => {
@@ -68,31 +70,39 @@ const ChatSidebar = () => {
     console.log('Creating direct chat with:', user);
   };
 
-  const handleInvite = async () => {
-    if (inviteEmail) {
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      toast({
+        title: "Link copied!",
+        description: "Share this link with friends to invite them.",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy link.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
       try {
-        const { error } = await supabase.functions.invoke('send-invite', {
-          body: {
-            email: inviteEmail,
-            inviterName: currentUser?.name || 'Someone',
-          },
+        await navigator.share({
+          title: 'Join me on Chat App!',
+          text: `${currentUser?.name || 'Someone'} invited you to join Chat App!`,
+          url: inviteLink,
         });
-
-        if (error) throw error;
-
-        toast({
-          title: "Invite sent",
-          description: `Invitation sent to ${inviteEmail}`,
-        });
-        setInviteEmail('');
       } catch (error) {
-        console.error('Error sending invite:', error);
-        toast({
-          title: "Error",
-          description: "Failed to send invitation.",
-          variant: "destructive",
-        });
+        if ((error as Error).name !== 'AbortError') {
+          handleCopyLink();
+        }
       }
+    } else {
+      handleCopyLink();
     }
   };
 
@@ -274,20 +284,32 @@ const ChatSidebar = () => {
             )}
           </div>
         ) : (
-          <div className="p-4">
-            <h2 className="text-xl font-semibold mb-4">Invite People</h2>
-            <Input
-              type="email"
-              placeholder="Enter email address"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-            />
+          <div className="p-4 space-y-4">
+            <h2 className="text-xl font-semibold">Invite People</h2>
+            <p className="text-sm text-muted-foreground">
+              Share this link with friends to invite them to join the chat app.
+            </p>
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Input
+                value={inviteLink}
+                readOnly
+                className="bg-transparent border-none text-sm"
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handleCopyLink}
+                className="shrink-0"
+              >
+                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
             <Button
-              onClick={handleInvite}
-              className="mt-2 bg-chat-primary hover:bg-chat-accent"
-              disabled={!inviteEmail}
+              onClick={handleShare}
+              className="w-full bg-chat-primary hover:bg-chat-accent"
             >
-              Send Invite
+              <Share2 className="h-4 w-4 mr-2" />
+              Share Invite Link
             </Button>
           </div>
         )}
