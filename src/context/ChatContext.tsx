@@ -464,12 +464,40 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const createChat = async (participants: User[], name?: string): Promise<Chat | null> => {
-    if (!currentUser) return null;
+    if (!currentUser) {
+      console.error('createChat: No current user');
+      return null;
+    }
     
     try {
       const chatType = participants.length === 1 ? 'direct' : 'group';
       
+      console.log('createChat: Starting with', { 
+        currentUserId: currentUser.id, 
+        chatType, 
+        participants: participants.map(p => p.id) 
+      });
+
+      // Check auth session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('createChat: Session check', { 
+        hasSession: !!session, 
+        userId: session?.user?.id,
+        sessionError 
+      });
+
+      if (!session) {
+        console.error('createChat: No active session');
+        toast({
+          title: "Error",
+          description: "Please log in again.",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
       // Create the chat
+      console.log('createChat: Inserting chat...');
       const { data: chatData, error: chatError } = await supabase
         .from('chats')
         .insert({
@@ -478,6 +506,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
         .select()
         .single();
+
+      console.log('createChat: Insert result', { chatData, chatError });
 
       if (chatError) throw chatError;
 
