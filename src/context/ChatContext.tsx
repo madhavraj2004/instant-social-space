@@ -1,7 +1,8 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, Message, Chat } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 // Sample users data
 const sampleUsers: User[] = [
@@ -57,7 +58,92 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [presenceChannel, setPresenceChannel] = useState<RealtimeChannel | null>(null);
   const { toast } = useToast();
+
+  // Update user status in the database
+  const updateUserStatus = useCallback(async (userId: string, status: 'online' | 'offline' | 'away') => {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ status })
+        .eq('id', userId);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+    }
+  }, []);
+
+  // Set up presence tracking
+  useEffect(() => {
+    if (!currentUser || !isAuthenticated) return;
+
+    // Update status to online when user joins
+    updateUserStatus(currentUser.id, 'online');
+
+    const channel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: currentUser.id,
+        },
+      },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const presenceState = channel.presenceState();
+        console.log('Presence sync:', presenceState);
+        
+        // Update users' online status based on presence
+        setUsers(prevUsers => 
+          prevUsers.map(user => {
+            const isOnline = Object.keys(presenceState).includes(user.id);
+            return {
+              ...user,
+              status: isOnline ? 'online' : 'offline',
+            };
+          })
+        );
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('User joined:', key, newPresences);
+        setUsers(prevUsers =>
+          prevUsers.map(user =>
+            user.id === key ? { ...user, status: 'online' } : user
+          )
+        );
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('User left:', key, leftPresences);
+        setUsers(prevUsers =>
+          prevUsers.map(user =>
+            user.id === key ? { ...user, status: 'offline' } : user
+          )
+        );
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            user_id: currentUser.id,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    setPresenceChannel(channel);
+
+    // Handle page unload to set user offline
+    const handleBeforeUnload = () => {
+      updateUserStatus(currentUser.id, 'offline');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      updateUserStatus(currentUser.id, 'offline');
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.id, isAuthenticated, updateUserStatus]);
 
   // Listen to Supabase auth state changes
   useEffect(() => {
